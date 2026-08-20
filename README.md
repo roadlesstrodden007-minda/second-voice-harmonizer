@@ -28,17 +28,6 @@ All DSP runs inside an `AudioWorkletProcessor`, so it processes audio on a dedic
 
 ## Running it
 
-Pick whichever fits how you want to use it:
-
-**Locally, with VS Code**
-Install the [Live Server](https://marketplace.visualstudio.com/items?itemName=ritwickdey.LiveServer) extension, right-click the HTML file, and choose "Open with Live Server." This serves it over `http://127.0.0.1`, which satisfies the secure-context requirement.
-
-**Locally, with Python**
-```
-python -m http.server 8000
-```
-then open `http://localhost:8000/index.html`. (If this fails with a socket/permission error, it's usually antivirus or firewall software blocking Python from opening a listening port — Live Server above is a good fallback.)
-
 **Hosted, with GitHub Pages**
 1. Push this repo to GitHub (public repo, for free Pages hosting)
 2. In the repo, rename the HTML file to `index.html` if it isn't already
@@ -46,7 +35,7 @@ then open `http://localhost:8000/index.html`. (If this fails with a socket/permi
 4. Your app will be live at `https://<your-username>.github.io/<repo-name>/`
 
 **Quick sharing / no install**
-Paste the HTML/CSS/JS into an online editor like [jsbin.com](https://jsbin.com) — just make sure you open the *standalone output URL* (not the embedded editor preview pane), since embedded iframes are commonly blocked from requesting microphone access.
+Paste the HTML/CSS/JS into an online editor — just make sure you open the *standalone output URL* (not the embedded editor preview pane), since embedded iframes are commonly blocked from requesting microphone access.
 
 ## Usage
 
