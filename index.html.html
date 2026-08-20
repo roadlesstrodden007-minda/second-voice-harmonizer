@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Second Voice — Vocal Harmony Trainer</title>
+<style>
+  :root {
+    --bg: #14110f;
+    --panel: #1d1916;
+    --panel-raised: #241f1b;
+    --line: #362f28;
+    --amber: #e8a33d;
+    --amber-dim: #8a6428;
+    --cream: #f2e9db;
+    --cream-dim: #9c9186;
+    --red: #c94f3f;
+    --green: #7fae6b;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--cream);
+    font-family: 'Courier New', ui-monospace, monospace;
+    min-height: 100vh;
+  }
+  body {
+    display: flex;
+    justify-content: center;
+    padding: 28px 16px 60px;
+  }
+  .rack {
+    width: 100%;
+    max-width: 480px;
+  }
+  header {
+    text-align: center;
+    margin-bottom: 22px;
+  }
+  header .eyebrow {
+    letter-spacing: 0.3em;
+    font-size: 11px;
+    color: var(--amber-dim);
+    text-transform: uppercase;
+  }
+  header h1 {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-weight: 400;
+    font-style: italic;
+    font-size: 28px;
+    margin: 6px 0 4px;
+    color: var(--cream);
+    letter-spacing: 0.01em;
+  }
+  header p {
+    font-size: 12px;
+    color: var(--cream-dim);
+    margin: 0;
+  }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 18px;
+    margin-bottom: 14px;
+  }
+  .panel-label {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--amber-dim);
+    margin-bottom: 12px;
+  }
+
+  /* transport */
+  .transport {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  #powerBtn {
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    border: 2px solid var(--amber-dim);
+    background: var(--panel-raised);
+    color: var(--amber);
+    font-size: 20px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.15s ease;
+  }
+  #powerBtn.live {
+    border-color: var(--amber);
+    background: var(--amber);
+    color: var(--bg);
+    box-shadow: 0 0 18px rgba(232, 163, 61, 0.45);
+  }
+  #powerBtn:active { transform: scale(0.95); }
+  .status-block { flex: 1; min-width: 0; }
+  #statusText {
+    font-size: 13px;
+    color: var(--cream-dim);
+  }
+  #statusText.live { color: var(--green); }
+  #statusText.err { color: var(--red); }
+  #latencyNote {
+    font-size: 10px;
+    color: var(--cream-dim);
+    opacity: 0.6;
+    margin-top: 3px;
+  }
+  #recordBtn {
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    border: 2px solid var(--amber-dim);
+    background: var(--panel-raised);
+    color: var(--red);
+    font-size: 20px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.15s ease;
+  }
+  #recordBtn:disabled { opacity: 0.35; cursor: not-allowed; }
+  #recordBtn.recording {
+    border-color: var(--red);
+    background: var(--red);
+    color: var(--bg);
+    box-shadow: 0 0 18px rgba(201, 79, 63, 0.45);
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 18px rgba(201, 79, 63, 0.45); }
+    50% { box-shadow: 0 0 6px rgba(201, 79, 63, 0.2); }
+  }
+  #recordStatus { font-size: 13px; color: var(--cream-dim); }
+  #recordStatus.recording { color: var(--red); }
+
+  canvas#scope {
+    width: 100%;
+    height: 70px;
+    display: block;
+    background: #0d0b09;
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    margin-top: 14px;
+  }
+
+  /* interval grid */
+  .interval-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+  .interval-btn {
+    background: var(--panel-raised);
+    border: 1px solid var(--line);
+    color: var(--cream-dim);
+    padding: 10px 4px;
+    font-family: inherit;
+    font-size: 12px;
+    border-radius: 2px;
+    cursor: pointer;
+    text-align: center;
+    line-height: 1.4;
+  }
+  .interval-btn .deg { display: block; font-size: 15px; color: var(--cream); }
+  .interval-btn.active {
+    border-color: var(--amber);
+    color: var(--amber);
+  }
+  .interval-btn.active .deg { color: var(--amber); }
+  .interval-btn:hover { border-color: var(--amber-dim); }
+
+  /* sliders */
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .slider-row:last-child { margin-bottom: 0; }
+  .slider-row label {
+    font-size: 11px;
+    color: var(--cream-dim);
+    width: 78px;
+    flex-shrink: 0;
+  }
+  input[type=range] {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 3px;
+    background: var(--line);
+    border-radius: 2px;
+    outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--amber);
+    cursor: pointer;
+    border: 2px solid var(--bg);
+  }
+  input[type=range]::-moz-range-thumb {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--amber);
+    cursor: pointer;
+    border: 2px solid var(--bg);
+  }
+  .slider-val {
+    font-size: 11px;
+    color: var(--amber);
+    width: 34px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--cream-dim);
+  }
+  .toggle-row input { accent-color: var(--amber); }
+
+  footer {
+    text-align: center;
+    font-size: 10px;
+    color: var(--cream-dim);
+    opacity: 0.5;
+    margin-top: 18px;
+    line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+<div class="rack">
+
+  <header>
+    <div class="eyebrow">Practice Tool</div>
+    <h1>Second Voice</h1>
+    <p>Sing lead. Hear your harmony. Learn the part.</p>
+  </header>
+
+  <div class="panel">
+    <div class="panel-label">Transport</div>
+    <div class="slider-row" style="margin-bottom:14px;">
+      <label>Mic input</label>
+      <select id="micSelect" style="flex:1; background:var(--panel-raised); color:var(--cream); border:1px solid var(--line); border-radius:2px; padding:6px; font-family:inherit; font-size:12px;">
+        <option value="">Default</option>
+      </select>
+    </div>
+    <div class="slider-row" style="margin-bottom:14px;">
+      <label>Input level</label>
+      <div style="flex:1; height:8px; background:var(--panel-raised); border:1px solid var(--line); border-radius:2px; overflow:hidden;">
+        <div id="inputLevelBar" style="height:100%; width:0%; background:var(--green); transition:width 0.05s linear;"></div>
+      </div>
+    </div>
+    <div class="transport">
+      <button id="powerBtn">●</button>
+      <div class="status-block">
+        <div id="statusText">Tap to start — mic access required</div>
+        <div id="latencyNote">Use headphones to avoid feedback</div>
+      </div>
+    </div>
+    <canvas id="scope" width="600" height="140"></canvas>
+  </div>
+
+  <div class="panel">
+    <div class="panel-label">Harmony Interval</div>
+    <div class="interval-grid" id="intervalGrid"></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-label">Mix</div>
+    <div class="slider-row">
+      <label>Your voice</label>
+      <input type="range" id="dryGain" min="0" max="100" value="80">
+      <span class="slider-val" id="dryGainVal">80%</span>
+    </div>
+    <div class="slider-row">
+      <label>Harmony</label>
+      <input type="range" id="wetGain" min="0" max="100" value="70">
+      <span class="slider-val" id="wetGainVal">70%</span>
+    </div>
+    <div class="toggle-row">
+      <span>Harmony voice only (mute lead)</span>
+      <input type="checkbox" id="soloWet">
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-label">Record</div>
+    <div class="transport">
+      <button id="recordBtn" disabled>⏺</button>
+      <div class="status-block">
+        <div id="recordStatus">Start the mic above first</div>
+      </div>
+    </div>
+    <audio id="playback" controls style="width:100%; margin-top:14px; display:none;"></audio>
+    <a id="downloadLink" style="display:none; font-size:11px; color:var(--amber); margin-top:8px;" download="second-voice-take.webm">Download this take</a>
+  </div>
+
+  <footer>
+    Phase-vocoder pitch shift, runs locally in your browser.<br>
+    Nothing you sing is uploaded anywhere.
+  </footer>
+
+</div>
+
+<script>
+// ============================================================
+// AudioWorkletProcessor source (runs in the audio rendering thread)
+// ============================================================
+const workletSource = `
+function fftInPlace(re, im, invert) {
+  const n = re.length;
+  for (let i=1, j=0; i<n; i++) {
+    let bit = n >> 1;
+    for (; j & bit; bit >>= 1) j ^= bit;
+    j ^= bit;
+    if (i < j) { let t=re[i]; re[i]=re[j]; re[j]=t; t=im[i]; im[i]=im[j]; im[j]=t; }
+  }
+  for (let len=2; len<=n; len<<=1) {
+    const ang = (invert?1:-1)*2*Math.PI/len;
+    const wRe=Math.cos(ang), wI=Math.sin(ang);
+    for (let i=0;i<n;i+=len){
+      let curRe=1,curIm=0;
+      for (let j=0;j<len/2;j++){
+        const uRe=re[i+j],uIm=im[i+j];
+        const vRe=re[i+j+len/2]*curRe-im[i+j+len/2]*curIm;
+        const vIm=re[i+j+len/2]*curIm+im[i+j+len/2]*curRe;
+        re[i+j]=uRe+vRe; im[i+j]=uIm+vIm;
+        re[i+j+len/2]=uRe-vRe; im[i+j+len/2]=uIm-vIm;
+        const nRe=curRe*wRe-curIm*wI, nIm=curRe*wI+curIm*wRe;
+        curRe=nRe; curIm=nIm;
+      }
+    }
+  }
+  if (invert) for (let i=0;i<n;i++){ re[i]/=n; im[i]/=n; }
+}
+function principalArg(x){ x=x%(2*Math.PI); if(x>Math.PI)x-=2*Math.PI; if(x<-Math.PI)x+=2*Math.PI; return x; }
+function hann(N){ const w=new Float32Array(N); for(let i=0;i<N;i++) w[i]=0.5-0.5*Math.cos(2*Math.PI*i/(N-1)); return w; }
+
+class PitchShifterProcessor extends AudioWorkletProcessor {
+  constructor() {
+    super();
+    this.Nfft = 2048; this.Ha = 512;
+    this.win = hann(this.Nfft);
+    this.inBufLen = this.Nfft * 4;
+    this.inBuf = new Float32Array(this.inBufLen);
+    this.inWrite = 0;
+    this.nextFrameStart = 0;
+    const half = this.Nfft/2;
+    this.prevPhase = new Float32Array(half+1);
+    this.synPhase = new Float32Array(half+1);
+    this.firstFrame = true;
+    this.stretchBufLen = this.Nfft * 8;
+    this.stretchBuf = new Float32Array(this.stretchBufLen);
+    this.stretchWinSum = new Float32Array(this.stretchBufLen);
+    this.stretchWriteHead = 0;
+    this.stretchReadPos = 0;
+    this.stretchFilled = 0;
+
+    this.targetRatio = 1.0;
+    this.currentRatio = 1.0;
+
+    this.port.onmessage = (e) => {
+      if (e.data && typeof e.data.ratio === 'number') {
+        this.targetRatio = e.data.ratio;
+      }
+    };
+  }
+
+  _idxIn(p){ return ((p % this.inBufLen)+this.inBufLen)%this.inBufLen; }
+  _idxOut(p){ return ((Math.floor(p) % this.stretchBufLen)+this.stretchBufLen)%this.stretchBufLen; }
+
+  _runAnalysisFrame(ratio) {
+    const Nfft=this.Nfft, Ha=this.Ha;
+    const Hs = Math.max(1, Math.round(Ha*ratio));
+    const start = this.nextFrameStart;
+    const re = new Float32Array(Nfft), im = new Float32Array(Nfft);
+    for (let i=0;i<Nfft;i++) re[i] = this.inBuf[this._idxIn(start+i)] * this.win[i];
+    fftInPlace(re, im, false);
+    const half = Nfft/2;
+    const mag = new Float32Array(half+1), phase = new Float32Array(half+1);
+    for (let k=0;k<=half;k++){ mag[k]=Math.hypot(re[k],im[k]); phase[k]=Math.atan2(im[k],re[k]); }
+    if (this.firstFrame) {
+      for (let k=0;k<=half;k++){ this.synPhase[k]=phase[k]; this.prevPhase[k]=phase[k]; }
+      this.firstFrame = false;
+    } else {
+      for (let k=0;k<=half;k++){
+        const expected = 2*Math.PI*k*Ha/Nfft;
+        const dphi = principalArg(phase[k]-this.prevPhase[k]-expected) + expected;
+        const trueFreq = dphi/Ha;
+        this.synPhase[k] += trueFreq*Hs;
+        this.prevPhase[k] = phase[k];
+      }
+    }
+    const ore = new Float32Array(Nfft), oim = new Float32Array(Nfft);
+    for (let k=0;k<=half;k++){
+      ore[k]=mag[k]*Math.cos(this.synPhase[k]);
+      oim[k]=mag[k]*Math.sin(this.synPhase[k]);
+      if (k>0 && k<half){ ore[Nfft-k]=ore[k]; oim[Nfft-k]=-oim[k]; }
+    }
+    fftInPlace(ore, oim, true);
+    const outStart = this.stretchWriteHead;
+    for (let i=0;i<Nfft;i++){
+      const idx = this._idxOut(outStart+i);
+      this.stretchBuf[idx] += ore[i]*this.win[i];
+      this.stretchWinSum[idx] += this.win[i]*this.win[i];
+    }
+    this.stretchWriteHead += Hs;
+    this.stretchFilled = this.stretchWriteHead - this.Nfft;
+    this.nextFrameStart += Ha;
+  }
+
+  process(inputs, outputs) {
+    const input = inputs[0][0];
+    const output = outputs[0][0];
+    if (!input || !output) return true;
+
+    // smooth ratio changes to avoid clicks when the user switches interval
+    const smoothing = 0.002;
+    this.currentRatio += (this.targetRatio - this.currentRatio) * smoothing * output.length;
+
+    for (let n=0;n<input.length;n++){
+      this.inBuf[this._idxIn(this.inWrite)] = input[n];
+      this.inWrite++;
+      while (this.nextFrameStart + this.Nfft <= this.inWrite) {
+        this._runAnalysisFrame(this.currentRatio);
+      }
+    }
+    const safeLimit = this.stretchFilled;
+    for (let n=0;n<output.length;n++){
+      if (this.stretchReadPos + 1 < safeLimit) {
+        const pos = this.stretchReadPos;
+        const i0 = Math.floor(pos), frac = pos-i0;
+        const i0x = this._idxOut(i0), i1x = this._idxOut(i0+1);
+        const a = this.stretchBuf[i0x] / Math.max(1e-6, this.stretchWinSum[i0x]);
+        const b = this.stretchBuf[i1x] / Math.max(1e-6, this.stretchWinSum[i1x]);
+        output[n] = a + (b-a)*frac;
+        this.stretchReadPos += this.currentRatio;
+      } else {
+        output[n] = 0;
+      }
+    }
+    return true;
+  }
+}
+registerProcessor('pitch-shifter', PitchShifterProcessor);
+`;
+
+// ============================================================
+// Main thread
+// ============================================================
+const intervals = [
+  { label: '8ve', deg: '−8', semis: -12 },
+  { label: '5th', deg: '−5', semis: -7 },
+  { label: '4th', deg: '−4', semis: -5 },
+  { label: 'min3', deg: '−3', semis: -3 },
+  { label: 'maj3', deg: '−3', semis: -4 },
+  { label: 'min3', deg: '+3', semis: 3 },
+  { label: 'maj3', deg: '+3', semis: 4 },
+  { label: '4th', deg: '+4', semis: 5 },
+  { label: '5th', deg: '+5', semis: 7 },
+  { label: '6th', deg: '+6', semis: 9 },
+  { label: '8ve', deg: '+8', semis: 12 },
+  { label: 'unison', deg: '=', semis: 0 },
+];
+
+let selectedSemis = 4; // default: major 3rd up — the classic harmony interval
+
+const grid = document.getElementById('intervalGrid');
+intervals.forEach(iv => {
+  const btn = document.createElement('button');
+  btn.className = 'interval-btn';
+  btn.innerHTML = `<span class="deg">${iv.deg}</span>${iv.label}`;
+  btn.dataset.semis = iv.semis;
+  btn.addEventListener('click', () => {
+    selectedSemis = iv.semis;
+    document.querySelectorAll('.interval-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    updateRatio();
+  });
+  if (iv.semis === selectedSemis) btn.classList.add('active');
+  grid.appendChild(btn);
+});
+
+let audioCtx = null, workletNode = null, sourceNode = null;
+let dryGainNode = null, wetGainNode = null;
+let analyser = null;
+let inputAnalyser = null;
+let isLive = false;
+let rafId = null;
+
+let recDestination = null, recDryDelay = null, mediaRecorder = null, recordedChunks = [];
+let isRecording = false;
+
+const powerBtn = document.getElementById('powerBtn');
+const statusText = document.getElementById('statusText');
+const latencyNote = document.getElementById('latencyNote');
+const canvas = document.getElementById('scope');
+const ctx2d = canvas.getContext('2d');
+const recordBtn = document.getElementById('recordBtn');
+const recordStatus = document.getElementById('recordStatus');
+const playback = document.getElementById('playback');
+const downloadLink = document.getElementById('downloadLink');
+const micSelect = document.getElementById('micSelect');
+
+async function populateMicList() {
+  try {
+    // labels are only populated after permission has been granted at least once;
+    // requesting a throwaway stream first ensures we get real device names, not "Microphone 1"
+    let tempStream = null;
+    try {
+      tempStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (e) { /* permission not granted yet — device list will just show generic labels */ }
+
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const mics = devices.filter(d => d.kind === 'audioinput');
+    micSelect.innerHTML = '<option value="">Default</option>';
+    mics.forEach((d, i) => {
+      const opt = document.createElement('option');
+      opt.value = d.deviceId;
+      opt.textContent = d.label || ('Microphone ' + (i + 1));
+      micSelect.appendChild(opt);
+    });
+
+    if (tempStream) tempStream.getTracks().forEach(t => t.stop());
+  } catch (e) {
+    console.warn('Could not list mic devices', e);
+  }
+}
+populateMicList();
+navigator.mediaDevices && navigator.mediaDevices.addEventListener &&
+  navigator.mediaDevices.addEventListener('devicechange', populateMicList);
+
+function setStatus(text, cls) {
+  statusText.textContent = text;
+  statusText.className = cls || '';
+}
+
+function updateRatio() {
+  if (workletNode) {
+    workletNode.port.postMessage({ ratio: Math.pow(2, selectedSemis/12) });
+  }
+}
+
+async function start() {
+  try {
+    if (!window.isSecureContext) {
+      setStatus('Mic requires HTTPS — open this file via a local server, not file://', 'err');
+      return;
+    }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setStatus('This browser/webview does not expose microphone access', 'err');
+      return;
+    }
+    if (!window.AudioWorklet) {
+      setStatus('This browser does not support AudioWorklet', 'err');
+      return;
+    }
+
+    setStatus('Requesting microphone…');
+    const chosenDeviceId = micSelect.value;
+    const audioConstraints = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };
+    if (chosenDeviceId) audioConstraints.deviceId = { exact: chosenDeviceId };
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
+    await populateMicList(); // refresh labels now that we definitely have permission
+
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') {
+      await audioCtx.resume();
+    }
+    const blob = new Blob([workletSource], { type: 'application/javascript' });
+    const url = URL.createObjectURL(blob);
+    await audioCtx.audioWorklet.addModule(url);
+
+    sourceNode = audioCtx.createMediaStreamSource(stream);
+    workletNode = new AudioWorkletNode(audioCtx, 'pitch-shifter', {
+      numberOfInputs: 1, numberOfOutputs: 1, channelCount: 1
+    });
+    updateRatio();
+
+    dryGainNode = audioCtx.createGain();
+    wetGainNode = audioCtx.createGain();
+    dryGainNode.gain.value = document.getElementById('dryGain').value / 100;
+    wetGainNode.gain.value = document.getElementById('wetGain').value / 100;
+
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 1024;
+
+    inputAnalyser = audioCtx.createAnalyser();
+    inputAnalyser.fftSize = 512;
+
+    recDestination = audioCtx.createMediaStreamDestination();
+
+    // The pitch shifter has ~90ms of inherent processing latency (it needs to buffer
+    // audio before it can shift it). Live monitoring stays undelayed for the lowest
+    // possible latency to your ears, but for the RECORDING specifically we delay the
+    // dry voice to match the harmony voice's delay, so the two land in sync in the file
+    // instead of sounding like a doubled echo.
+    recDryDelay = audioCtx.createDelay(1.0);
+    recDryDelay.delayTime.value = 0.09;
+
+    sourceNode.connect(dryGainNode);
+    sourceNode.connect(workletNode);
+    sourceNode.connect(inputAnalyser); // raw mic signal, for the level meter
+    workletNode.connect(wetGainNode);
+    dryGainNode.connect(analyser);
+    wetGainNode.connect(analyser);
+    analyser.connect(audioCtx.destination);
+
+    dryGainNode.connect(recDryDelay);
+    recDryDelay.connect(recDestination);
+    wetGainNode.connect(recDestination);
+
+    isLive = true;
+    powerBtn.classList.add('live');
+    powerBtn.textContent = '■';
+    setStatus('Live — sing into your mic', 'live');
+    latencyNote.textContent = 'Small delay is normal (~50–100ms)';
+    recordBtn.disabled = false;
+    recordStatus.textContent = 'Ready to record';
+    drawScope();
+  } catch (err) {
+    console.error(err);
+    setStatus('Error: ' + (err.name || '') + ' — ' + (err.message || String(err)), 'err');
+  }
+}
+
+function stop() {
+  if (isRecording) stopRecording();
+  if (audioCtx) {
+    audioCtx.close();
+    audioCtx = null;
+  }
+  isLive = false;
+  powerBtn.classList.remove('live');
+  powerBtn.textContent = '●';
+  setStatus('Tap to start — mic access required');
+  latencyNote.textContent = 'Use headphones to avoid feedback';
+  recordBtn.disabled = true;
+  recordStatus.textContent = 'Start the mic above first';
+  if (rafId) cancelAnimationFrame(rafId);
+  ctx2d.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+powerBtn.addEventListener('click', () => { isLive ? stop() : start(); });
+
+function pickMimeType() {
+  const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'];
+  for (const c of candidates) {
+    if (window.MediaRecorder && MediaRecorder.isTypeSupported(c)) return c;
+  }
+  return '';
+}
+
+function startRecording() {
+  if (!recDestination) return;
+  recordedChunks = [];
+  const mimeType = pickMimeType();
+  try {
+    mediaRecorder = mimeType
+      ? new MediaRecorder(recDestination.stream, { mimeType })
+      : new MediaRecorder(recDestination.stream);
+  } catch (e) {
+    recordStatus.textContent = 'Recording not supported in this browser';
+    return;
+  }
+  mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
+  mediaRecorder.onstop = () => {
+    const blob = new Blob(recordedChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+    const url = URL.createObjectURL(blob);
+    playback.src = url;
+    playback.style.display = 'block';
+    const ext = (mediaRecorder.mimeType || '').includes('mp4') ? 'm4a' : 'webm';
+    downloadLink.href = url;
+    downloadLink.download = 'second-voice-take.' + ext;
+    downloadLink.style.display = 'block';
+    downloadLink.textContent = 'Download this take';
+  };
+  mediaRecorder.start();
+  isRecording = true;
+  recordBtn.classList.add('recording');
+  recordBtn.textContent = '■';
+  recordStatus.textContent = 'Recording…';
+  recordStatus.classList.add('recording');
+}
+
+function stopRecording() {
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+  isRecording = false;
+  recordBtn.classList.remove('recording');
+  recordBtn.textContent = '⏺';
+  recordStatus.textContent = 'Take ready below';
+  recordStatus.classList.remove('recording');
+}
+
+recordBtn.addEventListener('click', () => {
+  if (!isLive) return;
+  isRecording ? stopRecording() : startRecording();
+});
+
+function drawScope() {
+  if (!isLive || !analyser) return;
+  const data = new Uint8Array(analyser.frequencyBinCount);
+  analyser.getByteTimeDomainData(data);
+  ctx2d.clearRect(0, 0, canvas.width, canvas.height);
+  ctx2d.strokeStyle = '#e8a33d';
+  ctx2d.lineWidth = 1.5;
+  ctx2d.beginPath();
+  const step = canvas.width / data.length;
+  for (let i=0;i<data.length;i++){
+    const y = (data[i]/255) * canvas.height;
+    if (i===0) ctx2d.moveTo(0,y); else ctx2d.lineTo(i*step, y);
+  }
+  ctx2d.stroke();
+
+  if (inputAnalyser) {
+    const inData = new Uint8Array(inputAnalyser.fftSize);
+    inputAnalyser.getByteTimeDomainData(inData);
+    let sumSquares = 0;
+    for (let i=0;i<inData.length;i++){
+      const v = (inData[i]-128)/128;
+      sumSquares += v*v;
+    }
+    const rms = Math.sqrt(sumSquares/inData.length);
+    const pct = Math.min(100, rms*260); // scaled for a responsive-looking meter
+    const bar = document.getElementById('inputLevelBar');
+    if (bar) {
+      bar.style.width = pct + '%';
+      bar.style.background = pct < 3 ? 'var(--red)' : 'var(--green)';
+    }
+  }
+
+  rafId = requestAnimationFrame(drawScope);
+}
+
+document.getElementById('dryGain').addEventListener('input', (e) => {
+  document.getElementById('dryGainVal').textContent = e.target.value + '%';
+  if (dryGainNode && !document.getElementById('soloWet').checked) {
+    dryGainNode.gain.value = e.target.value/100;
+  }
+});
+document.getElementById('wetGain').addEventListener('input', (e) => {
+  document.getElementById('wetGainVal').textContent = e.target.value + '%';
+  if (wetGainNode) wetGainNode.gain.value = e.target.value/100;
+});
+document.getElementById('soloWet').addEventListener('change', (e) => {
+  if (dryGainNode) {
+    dryGainNode.gain.value = e.target.checked ? 0 : document.getElementById('dryGain').value/100;
+  }
+});
+</script>
+</body>
+</html>
